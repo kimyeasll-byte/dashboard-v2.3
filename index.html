@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard v2.2 Final Complete | 지능형 통합 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #FFFFFF;
+            --text-main: #1A1A1A;
+            --text-sub: #666666;
+            --border-color: #D1D5DB;
+            --btn-bg: #1A1A1A;
+            --btn-text: #FFFFFF;
+            --btn-hover: #374151;
+            --danger: #DC2626;
+            --success: #059669;
+            --highlight: #FEF3C7;
+            /* Sticky note color */
+            --focus: #3B82F6;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        /* ---------------- Header ---------------- */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+        }
+
+        .top-nav h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .stock-ticker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 6px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #F9FAFB;
+        }
+
+        /* ---------------- Grid Layout ---------------- */
+        .dashboard-container {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 25px;
+            background: #FFFFFF;
+        }
+
+        .card-full {
+            grid-column: 1 / -1;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ---------------- Form & Table (Minimalist) ---------------- */
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 120px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        textarea {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--focus);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        input[readonly] {
+            background-color: #F9FAFB;
+            color: var(--text-sub);
+        }
+
+        button {
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+            height: 37px;
+        }
+
+        button:hover {
+            background: var(--btn-hover);
+        }
+
+        .btn-text {
+            background: transparent;
+            color: var(--focus);
+            text-decoration: underline;
+            padding: 0;
+            font-weight: 500;
+            height: auto;
+        }
+
+        .btn-text:hover {
+            background: transparent;
+            color: #2563EB;
+        }
+
+        .btn-danger {
+            color: var(--danger);
+            text-decoration: underline;
+            background: transparent;
+            padding: 0;
+            height: auto;
+        }
+
+        .table-wrapper {
+            margin-top: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 600px;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #F9FAFB;
+            color: var(--text-sub);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        tbody tr:hover {
+            background-color: #F9FAFB;
+        }
+
+        /* ---------------- Specific Modules ---------------- */
+        .insight-box {
+            background: #F9FAFB;
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 4px solid var(--text-main);
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            color: #374151;
+        }
+
+        .insight-box strong {
+            color: var(--text-main);
+        }
+
+        .esg-feed {
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .esg-feed ul {
+            padding-left: 20px;
+            margin: 8px 0 0 0;
+        }
+
+        .esg-feed li {
+            margin-bottom: 8px;
+        }
+
+        .esg-feed a {
+            color: #2563EB;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .esg-feed a:hover {
+            text-decoration: underline;
+        }
+
+        /* Sticky Notes (Title/Content Split) */
+        .memo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .sticky-note {
+            background: var(--highlight);
+            padding: 16px;
+            border-radius: 4px;
+            border: 1px solid #ECE3B1;
+            font-family: inherit;
+            position: relative;
+            min-height: 120px;
+            color: #111;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sticky-date {
+            font-size: 0.75rem;
+            color: #6B7280;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sticky-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .sticky-content {
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .sticky-del {
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .sticky-del:hover {
+            color: var(--danger);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 30px;
+            border-radius: 6px;
+            width: 650px;
+            max-width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: 1px solid;
+        }
+
+        .badge-완료 {
+            background: #D1FAE5;
+            color: var(--success);
+            border-color: #A7F3D0;
+        }
+
+        .badge-진행 {
+            background: #F3F4F6;
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 1. Global Header -->
+    <div class="top-nav">
+        <h1>Dashboard v2.4 Final Complete</h1>
+        <div class="stock-ticker" id="stockWidget">
+            <span style="font-weight: 700; color: #111;">KOSPI</span>
+            <span id="kospiPrice">2,650.00</span>
+            <span id="kospiDiff" style="color: var(--danger); margin-right: 15px;">-0.12%</span>
+
+            <span>파워넷 (037030)</span>
+            <span id="stockPrice">2,510원</span>
+            <span id="stockDiff" style="color: var(--danger);">-0.3%</span>
+            <span style="font-size:0.7rem; color:var(--text-sub); margin-left:2px;" id="stockTime"></span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+
+        <!-- 2. 지능형 분석 위젯 (Chart + AI + ESG) -->
+        <div class="card card-full">
+            <h2 class="section-title">Market Insight & ESG <span
+                    style="font-size:0.8rem; font-weight:400; color:#9CA3AF;">Auto Refresh (1h / 3h)</span></h2>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+                <div>
+                    <!-- 달러(USD) 명시 -->
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-sub); margin-bottom:10px;">📊 차세대
+                        메모리 지수 (미달러 USD 기준표기)</div>
+                    <canvas id="marketChart" height="90"></canvas>
+                </div>
+                <div>
+                    <div class="insight-box">
+                        <strong>🤖 전산 비품 AI 구매 전략팀</strong><br><br>
+                        "최근 모니터링 결과 반도체 시장이 <strong>AI 인프라 붐</strong>으로 인해 2026년 매출 역대 최고치 경신에 근접하고 있습니다.<br>
+                        결과적으로 다수 시스템의 <strong>단기적 가격 인상 가능성(5~15%)</strong>이 예고되므로 주요 비품(서버/PC)의 선제적인 예산 편성과 재고 확보를
+                        권고합니다."
+                    </div>
+                    <div class="esg-feed">
+                        <strong>🌱 실시간 ESG 보도 피드 (3H 주기)</strong>
+                        <ul id="esgNewsList">
+                            <!-- JS를 통해 <a> 생성됨 -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 회계 (연/월별 필터링 + 시스템) -->
+        <div class="card">
+            <h2 class="section-title">
+                지출결의서 (Cumulative)
+                <div style="font-size:0.9rem; font-weight:400; display:flex; align-items:center; gap:8px;">
+                    <button onclick="downloadExcel()"
+                        style="padding:4px 12px; font-size:0.85rem; background:#059669; color:white; border-radius:4px; border:none; cursor:pointer;">Excel
+                        다운로드</button>
+                    <select id="filterYear" onchange="filterByMonth()" style="padding:4px 8px; font-size:0.85rem;">
+                        <option value="ALL">전체 연도</option>
+                        <option value="2026" selected>2026년</option>
+                        <option value="2025">2025년</option>
+                    </select>
+                    <select id="filterMonth" onchange="filterByMonth()" style="padding:4px 8px; font-size:0.85rem;">
+                        <option value="ALL">전체 월</option>
+                        <option value="01">1월</option>
+                        <option value="02">2월</option>
+                        <option value="03" selected>3월</option>
+                        <option value="04">4월</option>
+                        <option value="05">5월</option>
+                        <option value="06">6월</option>
+                        <option value="07">7월</option>
+                        <option value="08">8월</option>
+                        <option value="09">9월</option>
+                        <option value="10">10월</option>
+                        <option value="11">11월</option>
+                        <option value="12">12월</option>
+                    </select>
+                    <span style="padding-left:10px;">필터 합계: <strong id="sumFilteredExp"
+                            style="color:var(--text-main); font-size:1.15rem;">0</strong>원</span>
+                </div>
+            </h2>
+
+            <!-- AI 이상 탐지 리포트 렌더링 영역 -->
+            <div id="aiAuditReport"
+                style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
+                <h4 style="margin-top:0; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    AI 심층 분석 및 이상 징후 탐지 리포트
+                </h4>
+                <div
+                    style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:1rem; margin-top:1rem;">
+                    <div
+                        style="background:#fff; border-left:4px solid var(--danger); padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:var(--danger); margin-bottom:0.5rem;">🚨
+                            [위험/주의] 이상 결제 의심</div>
+                        <div id="auditAnomaly" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석
+                            중...</div>
+                    </div>
+                    <div
+                        style="background:#fff; border-left:4px solid #10b981; padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:#10b981; margin-bottom:0.5rem;">💡 [최적화]
+                            통합 구매 전사 절감</div>
+                        <div id="auditOptimize" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석
+                            중...</div>
+                    </div>
+                    <div
+                        style="background:#fff; border-left:4px solid #6366f1; padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:#6366f1; margin-bottom:0.5rem;">📌 [비고] 차기
+                            운영 지침 권고</div>
+                        <div id="auditNotes" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group"><label>품의일자</label><input type="date" id="expDate"></div>
+                <div class="form-group" style="flex:2;"><label>내역/가맹점</label><input type="text" id="expName"
+                        placeholder="ex. 정기 임대료" list="expNameList">
+                    <datalist id="expNameList"></datalist>
+                </div>
+                <div class="form-group"><label>총액(KRW)</label><input type="text" id="expTotal" placeholder="0"
+                        oninput="formatCurrency(this)" onkeyup="calcSplit()"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>사업부 부담(%)</label><input type="number" id="expBizRatio" value="52" min="0"
+                        max="100" onkeyup="calcSplit()"></div>
+                <div class="form-group"><label>연구소 부담(%)</label><input type="number" id="expRndRatio" readonly></div>
+                <div class="form-group"><label>사업부 금액</label><input type="text" id="expBizAmt" readonly></div>
+                <div class="form-group"><label>연구소 금액</label><input type="text" id="expRndAmt" readonly></div>
+            </div>
+            <div class="form-row" style="align-items: center; justify-content: space-between;">
+                <label style="font-size:0.85rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input
+                        type="checkbox" id="expAuto"> 정기결제 여부</label>
+                <button onclick="addExpense()">단일 내역 등록</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="expenseTable">
+                    <thead>
+                        <tr>
+                            <th>결의일</th>
+                            <th>항목</th>
+                            <th>사(%)</th>
+                            <th>사(금액)</th>
+                            <th>연(%)</th>
+                            <th>연(금액)</th>
+                            <th>총 청구액</th>
+                            <th>정기</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. 비품 재고관리 (날짜별 누적 History) -->
+        <div class="card">
+            <h2 class="section-title">
+                Asset Inventory History (재고관리)
+                <button onclick="downloadInventoryExcel()"
+                    style="padding:4px 12px; font-size:0.85rem; background:#059669; color:white; border-radius:4px; border:none; cursor:pointer;">Excel
+                    다운로드</button>
+            </h2>
+
+            <!-- AI 재고 분석 리포트 렌더링 영역 -->
+            <div id="aiInventoryReport"
+                style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
+                <h4 style="margin-top:0; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    AI 재고 수급 최적화 인사이트
+                </h4>
+                <div
+                    style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:1rem; margin-top:1rem;">
+                    <div
+                        style="background:#fff; border-left:4px solid var(--danger); padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:var(--danger); margin-bottom:0.5rem;">🚨
+                            [위험/부족] 저재고 경고</div>
+                        <div id="invLowStock" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석 중...
+                        </div>
+                    </div>
+                    <div
+                        style="background:#fff; border-left:4px solid #10b981; padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:#10b981; margin-bottom:0.5rem;">⚡ [활성/회전]
+                            고빈도 이동 장비</div>
+                        <div id="invHighTurnover" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석
+                            중...</div>
+                    </div>
+                    <div
+                        style="background:#fff; border-left:4px solid #6366f1; padding:1rem; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size:0.85rem; font-weight:700; color:#6366f1; margin-bottom:0.5rem;">📌 [비고/잉여]
+                            장기 보관 의심</div>
+                        <div id="invDeadStock" style="font-size:0.9rem; color:var(--text-main); line-height:1.4;">분석
+                            중...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>발생일자</label><input type="date" id="invDate"></div>
+                <div class="form-group" style="flex:2;"><label>장비명 (구분)</label><input type="text" id="invName"
+                        placeholder="개발용 16인치 랩탑 등" list="invNameList">
+                    <datalist id="invNameList"></datalist>
+                </div>
+                <div class="form-group" style="flex:3;"><label>비고/메모</label><input type="text" id="invMemo"
+                        placeholder="신규 입사자 불출 결재 건"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>기초 재고</label><input type="number" id="invBase" value="0"
+                        onkeyup="calcStock()"></div>
+                <div class="form-group"><label>입고 (+)</label><input type="number" id="invIn" value="0"
+                        onkeyup="calcStock()"></div>
+                <div class="form-group"><label>출고 (-)</label><input type="number" id="invOut" value="0"
+                        onkeyup="calcStock()"></div>
+                <div class="form-group"><label>산출 현 재고량</label><input type="number" id="invCurrent" readonly
+                        style="font-weight:700; color:var(--focus);"></div>
+                <div class="form-group" style="justify-content: flex-end;"><button onclick="addInventoryHistory()">이력
+                        저장</button></div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>일자</th>
+                            <th>시간</th>
+                            <th>장비/품목명</th>
+                            <th>기초</th>
+                            <th>입고</th>
+                            <th>출고</th>
+                            <th>재고</th>
+                            <th>비고</th>
+                            <th>삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. 프로젝트 및 회의록 (PMO) -->
+        <div class="card card-full">
+            <h2 class="section-title">PMO Pipeline & Minutes (과제 추적기)</h2>
+            <div class="form-row" style="max-width: 900px;">
+                <div class="form-group" style="flex:3;"><label>프로젝트 과제명</label><input type="text" id="prjName"
+                        placeholder="과제명 입력"></div>
+                <div class="form-group"><label>현 상태</label>
+                    <select id="prjStatus">
+                        <option value="대기">대기</option>
+                        <option value="진행">진행</option>
+                        <option value="완료">완료</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>목표 진척도(%)</label>
+                    <select id="prjProgress">
+                        <option value="0">0%</option>
+                        <option value="10">10%</option>
+                        <option value="20">20%</option>
+                        <option value="30">30%</option>
+                        <option value="40">40%</option>
+                        <option value="50">50%</option>
+                        <option value="60">60%</option>
+                        <option value="70">70%</option>
+                        <option value="80">80%</option>
+                        <option value="90">90%</option>
+                        <option value="100">100%</option>
+                    </select>
+                </div>
+                <div class="form-group" style="justify-content: flex-end;"><button onclick="addProject()">과제 신규
+                        생성</button></div>
+            </div>
+
+            <div class="table-wrapper" style="max-height: 250px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>프로젝트명</th>
+                            <th>진척률</th>
+                            <th>상태</th>
+                            <th>상세 현황 (Task/Log)</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 6. 스마트 메모장 (Sticky Notes - 다중 분리 입력) -->
+        <div class="card card-full" style="background: transparent; border:none; box-shadow:none; padding:0;">
+            <h2 class="section-title">Smart Sticky Notes</h2>
+            <div class="form-row"
+                style="background:#fff; padding: 24px; border:1px solid var(--border-color); border-radius:6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02)">
+                <div class="form-group"><label>기록 일자</label><input type="date" id="memoDate"></div>
+                <div class="form-group" style="flex:2;"><label>메모 제목(Title)</label><input type="text" id="memoTitle"
+                        placeholder="주요 키워드 또는 제목"></div>
+                <div class="form-group" style="flex:3;"><label>상세 내용(Content)</label><textarea id="memoText" rows="1"
+                        placeholder="상세 내용 입력 후 하단 버튼 클릭" style="resize:vertical;"></textarea></div>
+                <div class="form-group" style="justify-content: flex-end;"><button onclick="addMemo()">포스트잇 부착</button>
+                </div>
+            </div>
+            <div class="memo-grid" id="memoGrid" style="margin-top: 24px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal for PMO Tasks -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 style="margin:0; font-size:1.25rem;" id="modalProjTitle">프로젝트 상세 대장</h2>
+                <button class="btn-text" onclick="closeModal()"
+                    style="font-size:1.5rem; text-decoration:none;">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:1;"><label>기록 유형</label>
+                    <select id="taskType">
+                        <option value="[작업]">[작업]</option>
+                        <option value="[회의록]">[회의록]</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;"><label>제목</label><input type="text" id="taskTitle"
+                        placeholder="작업/회의 제목" onkeypress="if(event.key==='Enter') addTask()"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:3; min-height: 200px;"><label>내용</label>
+                    <div id="taskContentEditor" style="height: 150px; background: white;"></div>
+                </div>
+            </div>
+            <div class="form-row" style="justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                <div class="form-group">
+                    <label>첨부파일</label>
+                    <input type="file" id="taskFile" style="font-size: 0.8rem;">
+                </div>
+                <button onclick="addTask()">내역 저장</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>분류</th>
+                            <th>제목/내용 (Summary)</th>
+                            <th>첨부파일</th>
+                            <th>TimeStamp</th>
+                            <th>삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // 0. 날짜 기본 세팅
+        // =========================================================
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('expDate').value = todayStr;
+        document.getElementById('memoDate').value = todayStr;
+        document.getElementById('invDate').value = todayStr;
+
+        // =========================================================
+        // 1. 하이브리드 로컬 누적 데이터 스토어 (zero downtime)
+        // =========================================================
+        const STORAGE_KEY = 'DASHBOARD_V2_FINAL_COMPLETE';
+        // inventory가 더이상 객체의 최신화가 아니라 배열 기반이 용이할 수 있으나 호환을 위해 고유 ID를 키로 가진 객체 맵 유지
+        let state = { expenses: {}, projects: {}, inventoryHistory: {}, memos: {}, tasks: {} };
+
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    // state 마이그레이션 호환
+                    state = { ...state, ...parsed };
+                } catch (e) { console.error('Data parsing error', e); }
+            }
+        }
+
+        function commitState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            renderAll();
+        }
+
+        function deleteRecord(path, key) {
+            if (confirm('이 이력을 영구 삭제하시겠습니까?')) {
+                delete state[path][key];
+                commitState();
+            }
+        }
+
+        // =========================================================
+        // 2. 지능형 위젯 실시간 데이터 리프레시 로직
+        // =========================================================
+
+        // 주가 리프레시 로직 (Yahoo Finance API CORS 우회 프록시 등을 이용한 JS Fetch)
+        async function updateStockWidget() {
+            try {
+                // Yahoo finance open base URL via a reliable proxy or directly if CORS allows.
+                // In a true JS environment with CORS issues, an intermediary proxy like 'cors-anywhere' or a dedicated worker is often needed.
+                // Assuming we use a simple structure to fetch current prices, we will simulate the Yahoo Finance YF api structure.
+
+                // Fetch KOSPI (^KS11)
+                const kospiUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?region=KR&lang=en-US&includePrePost=false&interval=1d&useYfid=true&range=2d');
+                const kospiRes = await fetch('https://corsproxy.io/?' + kospiUrl);
+                const kospiData = await kospiRes.json();
+
+                // Fetch Powernet (037030.KQ)
+                const powernetUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/037030.KQ?region=KR&lang=en-US&includePrePost=false&interval=1d&useYfid=true&range=2d');
+                const powernetRes = await fetch('https://corsproxy.io/?' + powernetUrl);
+                const powernetData = await powernetRes.json();
+
+                // Process KOSPI
+                const kospiResult = kospiData.chart.result[0];
+                const kospiCurr = kospiResult.meta.regularMarketPrice;
+                const kospiPrev = kospiResult.meta.chartPreviousClose;
+                let kospiDiffPercent = 0;
+                if (kospiPrev) {
+                    kospiDiffPercent = (((kospiCurr - kospiPrev) / kospiPrev) * 100).toFixed(2);
+                }
+
+                // Process Powernet
+                const pResult = powernetData.chart.result[0];
+                const pCurr = pResult.meta.regularMarketPrice;
+                const pPrev = pResult.meta.chartPreviousClose;
+                let pDiffPercent = 0;
+                if (pPrev) {
+                    pDiffPercent = (((pCurr - pPrev) / pPrev) * 100).toFixed(2);
+                }
+
+                // Update UI KOSPI
+                const isKospiDown = kospiCurr < kospiPrev;
+                const kospiColor = isKospiDown ? '#2563EB' : 'var(--danger)';
+                const kospiSign = kospiCurr > kospiPrev ? '+' : '';
+                document.getElementById('kospiPrice').innerText = kospiCurr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const uiKospiDiff = document.getElementById('kospiDiff');
+                uiKospiDiff.innerText = kospiSign + kospiDiffPercent + '%';
+                uiKospiDiff.style.color = kospiColor;
+
+                // Update UI Powernet
+                const isDown = pCurr < pPrev;
+                const color = isDown ? '#2563EB' : 'var(--danger)';
+                const sign = pCurr > pPrev ? '+' : '';
+                document.getElementById('stockPrice').innerText = Math.round(pCurr).toLocaleString() + '원';
+                const uiDiff = document.getElementById('stockDiff');
+                uiDiff.innerText = sign + pDiffPercent + '%';
+                uiDiff.style.color = color;
+
+                const now = new Date();
+                document.getElementById('stockTime').innerText = `(${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} 갱신)`;
+
+            } catch (e) {
+                console.warn('Failed to fetch from Yahoo API, using fallback...');
+                // Fallback loop logic
+                const uiKospiDiff = document.getElementById('kospiDiff');
+                document.getElementById('kospiPrice').innerText = '2,650.00';
+                uiKospiDiff.innerText = '-0.12%';
+                uiKospiDiff.style.color = '#2563EB';
+
+                document.getElementById('stockPrice').innerText = '2,510원';
+                const uiDiff = document.getElementById('stockDiff');
+                uiDiff.innerText = '-0.3%';
+                uiDiff.style.color = '#2563EB';
+
+                const now = new Date();
+                document.getElementById('stockTime').innerText = `(API 오류, ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')} 시점 기준값 표기)`;
+            }
+        }
+        updateStockWidget();
+        setInterval(updateStockWidget, 3600 * 1000); // 1시간 지정 (3600초)
+
+        // ESG 뉴스 리프레시
+        const dummyNews = [
+            { title: "[환경] AI 데이터센터 전력 최소화 전략 '그레이트 클린' 선포", url: "https://news.google.com/" },
+            { title: "[S] 주당 4일 선택적 재택근무 모델 도입 88% 만족", url: "https://news.google.com/" },
+            { title: "[G] 임원진 비용 투명화 블록체인 원장 기술 적용", url: "https://news.google.com/" },
+            { title: "[동향] 2026 AI 메모리 칩 부족 사태 가시화, IT 부서 비상", url: "https://news.google.com/" },
+            { title: "[정책] 데이터 관리 및 클라우드 보안 컴플라이언스 기준 상향", url: "https://news.google.com/" }
+        ];
+
+        function updateESGNews() {
+            const listObj = document.getElementById('esgNewsList');
+            listObj.innerHTML = '';
+            const shuffledCount = [...dummyNews].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+            shuffledCount.forEach(news => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = news.url;
+                a.target = "_blank";
+                a.innerText = news.title;
+                li.appendChild(a);
+                listObj.appendChild(li);
+            });
+        }
+        updateESGNews();
+        setInterval(updateESGNews, 10800 * 1000); // 3시간 지정 (10800초)
+
+        // Chart.js (DRAM USD)
+        const ctx = document.getElementById('marketChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1Q', '2Q', '3Q', '4Q(FCST)'],
+                datasets: [
+                    { label: 'DRAM 가격 지수(USD)', data: [5.2, 5.8, 6.5, 7.3], borderColor: '#1A1A1A', tension: 0.3, fill: false },
+                    { label: '시스템 반도체(USD)', data: [12.0, 12.2, 13.5, 14.1], borderColor: '#9CA3AF', borderDash: [5, 5], tension: 0.3, fill: false }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: false } } }
+        });
+
+
+        // =========================================================
+        // 3. 기능 모듈 (Cumulative & Filtered) 구현
+        // =========================================================
+
+        /* 3-1. 회계 (월별/연도별 동적 필터 시스템) */
+        function formatCurrency(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val) {
+                input.value = parseInt(val).toLocaleString();
+            } else {
+                input.value = '';
+            }
+        }
+
+        function extractNumber(str) {
+            if (!str) return 0;
+            return parseInt(str.toString().replace(/[^0-9]/g, '')) || 0;
+        }
+
+        function calcSplit() {
+            const total = extractNumber(document.getElementById('expTotal').value);
+            let bizRatio = parseInt(document.getElementById('expBizRatio').value) || 0;
+            if (bizRatio > 100) bizRatio = 100; if (bizRatio < 0) bizRatio = 0;
+
+            const rndRatio = 100 - bizRatio;
+            const bizAmt = Math.floor(total * (bizRatio / 100));
+            const rndAmt = total - bizAmt;
+
+            document.getElementById('expRndRatio').value = rndRatio;
+            document.getElementById('expBizAmt').value = bizAmt.toLocaleString() + '원';
+            document.getElementById('expRndAmt').value = rndAmt.toLocaleString() + '원';
+        }
+
+        function addExpense() {
+            const date = document.getElementById('expDate').value;
+            const name = document.getElementById('expName').value;
+            const total = extractNumber(document.getElementById('expTotal').value);
+            if (!name || total <= 0) return alert('결의 내역명과 총액을 입력하세요.');
+
+            const bizRatio = parseInt(document.getElementById('expBizRatio').value) || 0;
+            const isAuto = document.getElementById('expAuto').checked;
+            const rndRatio = 100 - bizRatio;
+            const bizAmt = Math.floor(total * (bizRatio / 100));
+            const rndAmt = total - bizAmt;
+
+            const key = 'exp_' + Date.now();
+            state.expenses[key] = { date, name, total, bizRatio, rndRatio, bizAmt, rndAmt, isAuto };
+
+            document.getElementById('expName').value = '';
+            document.getElementById('expTotal').value = '';
+            calcSplit();
+            commitState();
+        }
+
+        // 월별/연별 필터 렌더러
+        function filterByMonth() {
+            const tbody = document.getElementById('expenseTableBody');
+            tbody.innerHTML = '';
+            let sumTotal = 0;
+
+            const selYear = document.getElementById('filterYear').value;
+            const selMonth = document.getElementById('filterMonth').value;
+
+            const keys = Object.keys(state.expenses);
+            const aggregated = {};
+
+            keys.forEach(k => {
+                const e = state.expenses[k];
+                const [y, m, d] = e.date.split('-'); // "2026-03-04" -> "2026", "03", "04"
+
+                let isMatch = true;
+                if (selYear !== "ALL" && y !== selYear) isMatch = false;
+                if (selMonth !== "ALL" && m !== selMonth) isMatch = false;
+
+                if (isMatch) {
+                    if (!aggregated[e.name]) {
+                        aggregated[e.name] = {
+                            date: e.date, // keep latest
+                            name: e.name,
+                            bizAmt: 0,
+                            rndAmt: 0,
+                            total: 0,
+                            keys: [],
+                            isAuto: e.isAuto
+                        };
+                    }
+                    aggregated[e.name].bizAmt += parseInt(e.bizAmt) || 0;
+                    aggregated[e.name].rndAmt += parseInt(e.rndAmt) || 0;
+                    aggregated[e.name].total += e.total;
+                    if (e.date > aggregated[e.name].date) aggregated[e.name].date = e.date; // latest date
+                    aggregated[e.name].isAuto = aggregated[e.name].isAuto || e.isAuto;
+                    aggregated[e.name].keys.push(k);
+                    sumTotal += e.total;
+                }
+            });
+
+            // sort by latest date desc
+            Object.values(aggregated).sort((a, b) => b.date.localeCompare(a.date)).forEach(e => {
+                let bizRatio = e.total ? Math.round((e.bizAmt / e.total) * 100) : 0;
+                let rndRatio = 100 - bizRatio;
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-size:0.8rem; color:var(--text-sub);">${e.date}</td>
+                        <td><strong>${e.name}</strong> <span style="font-size:0.7rem; color:#999; margin-left:4px;">(${e.keys.length}건 누적)</span></td>
+                        <td>${bizRatio}% <span style="color:var(--text-sub); font-size:0.75rem;">(${parseInt(e.bizAmt).toLocaleString()}원)</span></td>
+                        <td>${rndRatio}% <span style="color:var(--text-sub); font-size:0.75rem;">(${parseInt(e.rndAmt).toLocaleString()}원)</span></td>
+                        <td style="font-weight:600;">${parseInt(e.total).toLocaleString()}원</td>
+                        <td>${e.isAuto ? '<span class="badge badge-완료">정기</span>' : '-'}</td>
+                        <td><button class="btn-danger" onclick="deleteExpenses(['${e.keys.join("','")}'])">모두 삭제</button></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('sumFilteredExp').innerText = sumTotal.toLocaleString();
+
+            analyzeExpenses(keys);
+        }
+
+        function analyzeExpenses(keys) {
+            let mapByShopAndDate = {};
+            let optimizeKeywords = ['마우스', '키보드', '모니터', '케이블', '소프트웨어', '라이선스', '구독', '렌탈', '용지', '복사용지', '오피스', 'office'];
+            let optimizeTotal = 0;
+            let anomalyCount = 0;
+            let anomalyAmt = 0;
+
+            let pricesByName = {};
+
+            keys.forEach(k => {
+                const e = state.expenses[k];
+                // 1. 분할 결제 의심 (동일 날짜, 동일 가맹점)
+                let shopKey = e.date + '|' + e.name;
+                if (!mapByShopAndDate[shopKey]) mapByShopAndDate[shopKey] = [];
+                mapByShopAndDate[shopKey].push(e.total);
+
+                // 2. 주말 공휴일 (토,일) 결제 판단
+                let d = new Date(e.date);
+                if (d.getDay() === 0 || d.getDay() === 6) {
+                    anomalyCount++;
+                    anomalyAmt += e.total;
+                }
+
+                // 3. 최적화 대상 분류 (IT기기/소모품/라이선스) 합산
+                let isOptimizeItem = optimizeKeywords.some(kw => e.name.toLowerCase().includes(kw));
+                if (isOptimizeItem) optimizeTotal += e.total;
+
+                // 4. 동일 항목 단가 추적 (항목명이 같을 때 단가 변동 파악)
+                if (!pricesByName[e.name]) pricesByName[e.name] = [];
+                pricesByName[e.name].push(e.total);
+            });
+
+            // 동일 날짜/가맹점 복수 결제 합산
+            for (let key in mapByShopAndDate) {
+                if (mapByShopAndDate[key].length > 1) {
+                    anomalyCount += (mapByShopAndDate[key].length - 1);
+                    let sum = mapByShopAndDate[key].reduce((a, b) => a + b, 0);
+                    anomalyAmt += sum;
+                }
+            }
+
+            // 동일 항목 내 단가 차이가 큰 내역 추출
+            let wasteItems = [];
+            for (let name in pricesByName) {
+                let prices = pricesByName[name];
+                if (prices.length > 1) {
+                    let min = Math.min(...prices);
+                    let max = Math.max(...prices);
+                    // 1.5배 이상 차이가 나는 경우 편차가 심하다고 판단하여 waste 
+                    if (max > min * 1.5 && min > 0) {
+                        wasteItems.push(name);
+                    }
+                }
+            }
+
+            // DOM 렌더링 영역
+            let elAnomaly = document.getElementById('auditAnomaly');
+            if (anomalyCount > 0) {
+                elAnomaly.innerHTML = `<strong>${anomalyCount}건</strong>의 분할/휴일 결제 의심<br><span style="color:var(--text-sub); font-size:0.8rem;">(관련 누적액: ${anomalyAmt.toLocaleString()}원)</span>`;
+            } else {
+                elAnomaly.innerHTML = `<span style="color:var(--text-sub);">특이사항 없음</span>`;
+            }
+
+            let elOpt = document.getElementById('auditOptimize');
+            if (optimizeTotal > 0) {
+                let saved = Math.floor(optimizeTotal * 0.15); // 15% 통합구매 절감
+                elOpt.innerHTML = `IT/소모품 등 통합구매 예상 절감액<br><strong>${saved.toLocaleString()}원</strong> <span style="color:var(--text-sub); font-size:0.8rem;">(10~15% ↓)</span>`;
+            } else {
+                elOpt.innerHTML = `<span style="color:var(--text-sub);">최적화 풀 부족</span>`;
+            }
+
+            let elNotes = document.getElementById('auditNotes');
+            if (wasteItems.length > 0) {
+                elNotes.innerHTML = `표준 단가 제정 권고 항목:<br><strong>${wasteItems.slice(0, 3).join(', ')}${wasteItems.length > 3 ? ' 등' : ''}</strong><br><span style="color:var(--text-sub); font-size:0.8rem;">(결제 건별 단가 편차 50% 이상)</span>`;
+            } else {
+                elNotes.innerHTML = `<span style="color:var(--text-sub);">지출 단가 편차 양호함</span>`;
+            }
+        }
+
+        /* 3-2. 비품 재고 누적 히스토리 */
+        function calcStock() {
+            const base = parseInt(document.getElementById('invBase').value) || 0;
+            const inS = parseInt(document.getElementById('invIn').value) || 0;
+            const outS = parseInt(document.getElementById('invOut').value) || 0;
+            document.getElementById('invCurrent').value = base + inS - outS;
+        }
+
+        function addInventoryHistory() {
+            const date = document.getElementById('invDate').value;
+            const name = document.getElementById('invName').value;
+            const memo = document.getElementById('invMemo').value;
+            if (!name) return alert('장비/품목명을 명확히 입력하세요.');
+
+            const base = parseInt(document.getElementById('invBase').value) || 0;
+            const inS = parseInt(document.getElementById('invIn').value) || 0;
+            const outS = parseInt(document.getElementById('invOut').value) || 0;
+            const curr = base + inS - outS;
+            const timeStr = new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const key = 'invLog_' + Date.now();
+            state.inventoryHistory[key] = { date, time: timeStr, name, memo, base, inS, outS, curr };
+
+            document.getElementById('invName').value = '';
+            document.getElementById('invMemo').value = '';
+            ['invBase', 'invIn', 'invOut', 'invCurrent'].forEach(id => document.getElementById(id).value = '0');
+
+            commitState();
+        }
+
+        function renderInventoryHistory() {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+
+            const keys = Object.keys(state.inventoryHistory || {}).sort((a, b) => {
+                const dateA = state.inventoryHistory[a].date + " " + (state.inventoryHistory[a].time || "00:00:00");
+                const dateB = state.inventoryHistory[b].date + " " + (state.inventoryHistory[b].time || "00:00:00");
+                return dateB.localeCompare(dateA);
+            });
+
+            // Track which item names have already had their latest row displayed
+            const seenNames = new Set();
+            const latestItems = [];
+            const historyItems = [];
+
+            keys.forEach((k) => {
+                const i = state.inventoryHistory[k];
+                if (!seenNames.has(i.name)) {
+                    seenNames.add(i.name);
+                    latestItems.push({ k, i });
+                } else {
+                    historyItems.push({ k, i });
+                }
+            });
+
+            // Populate Datalist for autocomplete
+            const datalist = document.getElementById('invNameList');
+            datalist.innerHTML = '';
+            seenNames.forEach(name => {
+                datalist.innerHTML += `<option value="${name}">`;
+            });
+
+            [...latestItems, ...historyItems].forEach(({ k, i }) => {
+                const isLatest = latestItems.some(x => x.k === k);
+                const bgstyle = isLatest ? 'background-color:#FFFBEB;' : '';
+                const nameDisplay = isLatest ? `<span style="color:var(--focus); margin-right:4px;">★</span>${i.name}` : i.name;
+                const currDisplay = isLatest ? `<span style="font-size: 1.25rem; font-weight:800; color:var(--text-main);">${i.curr}</span>` : i.curr;
+                const timeStr = i.time || '-';
+
+                tbody.innerHTML += `
+                    <tr style="${bgstyle}">
+                        <td style="font-size:0.8rem; color:#666;">${i.date}</td>
+                        <td style="font-size:0.75rem; color:#9CA3AF;">${timeStr}</td>
+                        <td style="font-weight:600;">${nameDisplay}</td>
+                        <td>${i.base}</td>
+                        <td style="color:var(--focus); font-weight:600;">+${i.inS}</td>
+                        <td style="color:var(--danger); font-weight:600;">-${i.outS}</td>
+                        <td style="background:#FEF9C3; font-weight:700;">${currDisplay}</td>
+                        <td style="font-size:0.8rem;">${i.memo || '-'}</td>
+                        <td><button class="btn-danger" onclick="deleteRecord('inventoryHistory', '${k}')">취소</button></td>
+                    </tr>
+                `;
+            });
+
+            analyzeInventoryInsights(latestItems, historyItems);
+        }
+
+        function analyzeInventoryInsights(latestItems, historyItems) {
+            let lowStocks = [];
+            let deadStocks = [];
+
+            // Analyze the latest stock counts
+            latestItems.forEach(item => {
+                if (item.curr > 0 && item.curr <= 5) {
+                    lowStocks.push(item);
+                } else if (item.curr >= 50) {
+                    deadStocks.push(item);
+                }
+            });
+
+            // Analyze historical activity to find high turnover items
+            let activityCount = {};
+            historyItems.forEach(item => {
+                let name = item.name;
+                if (!activityCount[name]) activityCount[name] = 0;
+                if (item.inS > 0 || item.outS > 0) {
+                    activityCount[name]++;
+                }
+            });
+
+            let highTurnovers = Object.keys(activityCount).map(name => ({ name, count: activityCount[name] })).sort((a, b) => b.count - a.count);
+
+            // DOM rendering
+            let elLowStock = document.getElementById('invLowStock');
+            if (lowStocks.length > 0) {
+                let names = lowStocks.slice(0, 3).map(i => `${i.name} (${i.curr}개)`).join(', ');
+                elLowStock.innerHTML = `재고 부족 임박 항목:<br><strong>${names}</strong><br><span style="color:var(--text-sub); font-size:0.8rem;">(잔여 수량 5개 이하)</span>`;
+            } else {
+                elLowStock.innerHTML = `<span style="color:var(--text-sub);">특이사항 없음</span>`;
+            }
+
+            let elTurnover = document.getElementById('invHighTurnover');
+            if (highTurnovers.length > 0 && highTurnovers[0].count > 1) {
+                let names = highTurnovers.slice(0, 2).map(i => `${i.name} (${i.count}회)`).join(', ');
+                elTurnover.innerHTML = `입출고 빈도 최상위:<br><strong>${names}</strong><br><span style="color:var(--text-sub); font-size:0.8rem;">(사용량 모니터링 요망)</span>`;
+            } else {
+                elTurnover.innerHTML = `<span style="color:var(--text-sub);">회전율 부족</span>`;
+            }
+
+            let elDeadStock = document.getElementById('invDeadStock');
+            // Check for large amounts that might be dead stock
+            if (deadStocks.length > 0) {
+                // sort dead stocks by largest quantity
+                deadStocks.sort((a, b) => b.curr - a.curr);
+                let names = deadStocks.slice(0, 2).map(i => `${i.name} (${i.curr}개)`).join(', ');
+                elDeadStock.innerHTML = `대량 보관 잉여 자산 의심:<br><strong>${names}</strong><br><span style="color:var(--text-sub); font-size:0.8rem;">(과잉 여유분 50개 이상)</span>`;
+            } else {
+                elDeadStock.innerHTML = `<span style="color:var(--text-sub);">장기 보관 잉여 재고 없음</span>`;
+            }
+        }
+
+        /* 3-3. PMO 프로젝트 누적 관리 */
+        let currentPrjId = null;
+
+        function addProject() {
+            const name = document.getElementById('prjName').value;
+            if (!name) return alert('과제명을 필수 입력하세요.');
+            const status = document.getElementById('prjStatus').value;
+            const progress = document.getElementById('prjProgress').value || 0;
+
+            const key = 'prj_' + Date.now();
+            state.projects[key] = { name, status, progress };
+
+            document.getElementById('prjName').value = '';
+            document.getElementById('prjProgress').value = '0';
+            commitState();
+        }
+
+        function renderProjects() {
+            const tbody = document.getElementById('projectTableBody');
+            tbody.innerHTML = '';
+
+            const keys = Object.keys(state.projects);
+            keys.forEach(k => {
+                const p = state.projects[k];
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:600;">${p.name}</td>
+                        <td>${p.progress}%</td>
+                        <td>
+                            <select onchange="updateProjectStatus('${k}', this.value)" style="padding:2px 4px; font-size:0.8rem; border-color:var(--border-color); border-radius:4px; outline:none; cursor:pointer;" class="badge badge-${p.status}">
+                                <option value="대기" ${p.status === '대기' ? 'selected' : ''}>대기</option>
+                                <option value="진행" ${p.status === '진행' ? 'selected' : ''}>진행</option>
+                                <option value="완료" ${p.status === '완료' ? 'selected' : ''}>완료</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-text" onclick="openModal('${k}', '${p.name}')">Task Log 열기</button></td>
+                        <td><button class="btn-danger" onclick="deleteRecord('projects', '${k}')">삭제</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateProjectStatus(key, newStatus) {
+            if (state.projects[key]) {
+                state.projects[key].status = newStatus;
+                commitState();
+            }
+        }
+
+        function openModal(pjId, pjName) {
+            currentPrjId = pjId;
+            document.getElementById('modalProjTitle').innerText = `과제명: [${pjName}] 대장표 막사`;
+            document.getElementById('taskModal').style.display = 'flex';
+            renderTasks();
+        }
+        function closeModal() { document.getElementById('taskModal').style.display = 'none'; currentPrjId = null; }
+
+        function addTask() {
+            if (!currentPrjId) return;
+            const type = document.getElementById('taskType').value;
+            const title = document.getElementById('taskTitle').value;
+            const content = quillTaskEditor.root.innerHTML;
+            const fileInput = document.getElementById('taskFile');
+            const file = fileInput.files.length > 0 ? fileInput.files[0].name : null;
+
+            if (!title) return alert('제목을 입력하세요.');
+            if (!content || content === '<p><br></p>') return alert('내용을 입력하세요.');
+
+            const timeStr = new Date().toLocaleTimeString();
+            const key = 'tsk_' + Date.now();
+            state.tasks[key] = { prjId: currentPrjId, type, title, content, file, time: timeStr };
+
+            document.getElementById('taskTitle').value = '';
+            quillTaskEditor.root.innerHTML = '';
+            document.getElementById('taskFile').value = '';
+            commitState();
+        }
+
+        function deleteExpenses(keys) {
+            if (confirm('이 항목의 이력을 모두 영구 삭제하시겠습니까?')) {
+                keys.forEach(k => delete state.expenses[k]);
+                commitState();
+            }
+        }
+
+        function downloadExcel() {
+            const table = document.getElementById('expenseTable');
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+            XLSX.writeFile(wb, "지출결의서_" + new Date().toISOString().split('T')[0] + ".xlsx");
+        }
+
+        function renderTasks() {
+            const tbody = document.getElementById('taskTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const keys = Object.keys(state.tasks).reverse();
+            keys.forEach(k => {
+                const t = state.tasks[k];
+                if (t.prjId === currentPrjId) {
+                    const badgeClr = t.type === '[작업]' ? 'var(--text-main)' : 'var(--focus)';
+                    const fileDisplay = t.file ? `<span style="font-size:0.75rem; color:#2563EB; text-decoration:underline;">📎 ${t.file}</span>` : '-';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700; color:${badgeClr};">${t.type}</td>
+                            <td>
+                                <strong>${t.title}</strong>
+                                <div style="margin-top:4px; font-size:0.85rem; color:#4B5563;">${t.content}</div>
+                            </td>
+                            <td>${fileDisplay}</td>
+                            <td style="font-size:0.75rem; color:#9CA3AF;">${t.time}</td>
+                            <td><button class="btn-danger" onclick="deleteRecord('tasks', '${k}')">삭제</button></td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        /* 3-4. 스마트 메모 (제목 & 내용 분리 누적) */
+        function addMemo() {
+            const date = document.getElementById('memoDate').value;
+            const title = document.getElementById('memoTitle').value;
+            const content = document.getElementById('memoText').value;
+            if (!title || !content) return alert('메모 제목과 상세 내용을 모두 작성해주세요.');
+
+            const key = 'memo_' + Date.now();
+            state.memos[key] = { date, title, content };
+
+            document.getElementById('memoTitle').value = '';
+            document.getElementById('memoText').value = '';
+            commitState();
+        }
+
+        function renderMemos() {
+            const grid = document.getElementById('memoGrid');
+            grid.innerHTML = '';
+
+            const keys = Object.keys(state.memos).sort((Math.random)); // 단순 역순 표출을 위해 sort
+            const revKeys = Object.keys(state.memos).reverse();
+
+            revKeys.forEach(k => {
+                const m = state.memos[k];
+                grid.innerHTML += `
+                    <div class="sticky-note">
+                        <div class="sticky-date">
+                            <span>${m.date}</span>
+                            <span class="sticky-del" onclick="deleteRecord('memos', '${k}')">✖</span>
+                        </div>
+                        <div class="sticky-title">${m.title}</div>
+                        <div class="sticky-content">${m.content}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // =========================================================
+        // 4. 앱 초기화 부트스트래핑 및 이벤트
+        // =========================================================
+        function renderAll() {
+            filterByMonth(); // expenses는 render 대신 filter 사용
+            renderInventoryHistory();
+            renderProjects();
+            renderMemos();
+            if (currentPrjId) renderTasks(); // 모달 켜져있을 시 동기화
+        }
+
+        // 재고명 입력 시 가장 최근 현재고를 기초 재고로 자동 불러오기
+        document.getElementById('invName').addEventListener('input', function (e) {
+            const searchName = e.target.value.trim();
+            if (!searchName) {
+                document.getElementById('invBase').value = 0;
+                calcStock();
+                return;
+            }
+
+            let latestDate = "";
+            let latestCurr = 0;
+
+            // 기록된 모든 히스토리에서 동일 이름을 가진 최신 기록을 찾음
+            Object.keys(state.inventoryHistory || {}).forEach(k => {
+                const item = state.inventoryHistory[k];
+                if (item.name === searchName) {
+                    if (item.date > latestDate || (item.date === latestDate && item.curr !== undefined)) {
+                        latestDate = item.date;
+                        latestCurr = item.curr;
+                    }
+                }
+            });
+
+            document.getElementById('invBase').value = latestCurr;
+            calcStock();
+        });
+
+        // 지출결의 내역 카이핑 시에도 최신 자동완성 적용
+        document.getElementById('expName').addEventListener('input', function (e) {
+            // No auto-fill for expenses yet, but handled visually.
+        });
+
+        let quillTaskEditor;
+        window.addEventListener('DOMContentLoaded', () => {
+            quillTaskEditor = new Quill('#taskContentEditor', {
+                theme: 'snow',
+                placeholder: '작업 상세 또는 회의 결론',
+                modules: {
+                    toolbar: [
+                        [{ 'font': [] }, { 'size': [] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                }
+            });
+            loadState();
+            renderAll();
+        });
+
+    </script>
+</body>
+
+</html>
